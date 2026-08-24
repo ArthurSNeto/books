@@ -553,7 +553,7 @@ function renderBooksGrid(books) {
         const formatBadgeColor = book.format === 'epub' ? 'bg-cyan-950 text-cyan-300 border-cyan-700/60' : 'bg-rose-950 text-rose-300 border-rose-700/60';
         const isFav = book.is_favorite === 1;
 
-        const totalPagesCount = book.page_count || book.total_pages || 0;
+        const totalPagesCount = (book.total_pages > 1 ? book.total_pages : book.page_count) || 0;
         const totalPagesLabel = totalPagesCount > 0 ? `${totalPagesCount} págs` : '';
 
         card.innerHTML = `

@@ -69,14 +69,15 @@ async function openEpubViewer(bookId, startCfi = null) {
                     document.getElementById('readerPageInput').max = currentEpubTotalPages;
                     
                     const loc = currentRendition.currentLocation();
-                    if (loc && loc.start && loc.start.cfi) {
-                        const currPage = currentEpubBook.locations.locationFromCfi(loc.start.cfi) + 1;
-                        if (currPage && currPage > 0) {
-                            currentEpubCurrentPage = currPage;
-                            document.getElementById('readerPageInput').value = currPage;
-                            saveReadingProgress(currentBookId, currPage, currentEpubTotalPages, loc.start.cfi);
-                        }
+                    const cfi = (loc && loc.start) ? loc.start.cfi : startCfi;
+                    let currPage = currentEpubCurrentPage || 1;
+                    if (cfi) {
+                        const calcPage = currentEpubBook.locations.locationFromCfi(cfi) + 1;
+                        if (calcPage && calcPage > 0) currPage = calcPage;
                     }
+                    currentEpubCurrentPage = currPage;
+                    document.getElementById('readerPageInput').value = currPage;
+                    saveReadingProgress(currentBookId, currPage, currentEpubTotalPages, cfi);
                 }
             } catch (e) {
                 console.log('EPUB locations generation notice:', e);

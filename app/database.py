@@ -139,7 +139,7 @@ def get_books(
         b.id, b.filename, b.title, b.author, b.year, b.category, b.language,
         b.format, b.size_bytes, b.page_count, b.rel_path, b.abs_path, b.created_at, b.updated_at,
         COALESCE(rp.current_page, 1) as current_page,
-        CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(b.page_count, 1) END as total_pages,
+        CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(NULLIF(b.page_count, 0), 1) END as total_pages,
         COALESCE(rp.progress_percent, 0.0) as progress_percent,
         rp.epub_cfi,
         rp.last_read_at,
@@ -176,7 +176,7 @@ def get_book_by_id(book_id: int) -> Optional[Dict[str, Any]]:
         b.id, b.filename, b.title, b.author, b.year, b.category, b.language,
         b.format, b.size_bytes, b.page_count, b.rel_path, b.abs_path, b.created_at, b.updated_at,
         COALESCE(rp.current_page, 1) as current_page,
-        CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(b.page_count, 1) END as total_pages,
+        CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(NULLIF(b.page_count, 0), 1) END as total_pages,
         COALESCE(rp.progress_percent, 0.0) as progress_percent,
         rp.epub_cfi,
         rp.last_read_at,
@@ -242,7 +242,7 @@ def get_stats() -> Dict[str, Any]:
     SELECT 
         b.id, b.filename, b.title, b.author, b.year, b.category, b.language,
         b.format, b.page_count, b.rel_path, b.abs_path,
-        rp.current_page, CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(b.page_count, 1) END as total_pages, rp.progress_percent, rp.last_read_at
+        rp.current_page, CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(NULLIF(b.page_count, 0), 1) END as total_pages, rp.progress_percent, rp.last_read_at
     FROM reading_progress rp
     JOIN books b ON rp.book_id = b.id
     WHERE rp.status = 'reading'
@@ -298,9 +298,9 @@ def update_reading_progress(
         status = excluded.status
     """, (book_id, current_page, final_total, progress_pct, epub_cfi, status))
     
-    # Also update page_count in books table if learned from reader
+    # Always update page_count in books table when learned from reader
     if total_pages and total_pages > 1:
-        cursor.execute("UPDATE books SET page_count = ? WHERE id = ? AND (page_count IS NULL OR page_count <= 1)", (total_pages, book_id))
+        cursor.execute("UPDATE books SET page_count = ? WHERE id = ?", (total_pages, book_id))
     
     conn.commit()
     conn.close()
