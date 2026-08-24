@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from app.config import get_config, set_library_dir, get_library_dir, is_library_configured
 from app.database import (
     init_db, get_books, get_book_by_id, update_book_metadata,
-    move_book, update_reading_progress, toggle_favorite, get_stats,
+    move_book, update_reading_progress,
+    reset_reading_progress, toggle_favorite, get_stats,
     get_categories_with_counts, get_languages
 )
 from app.scanner import scan_and_sync_library
@@ -192,3 +193,10 @@ def api_sync_library():
 
 # Mount static files
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
+@app.post("/api/books/{book_id}/reset-progress")
+def reset_progress(book_id: int):
+    book = reset_reading_progress(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Livro não encontrado")
+    return {"success": True, "book": book}

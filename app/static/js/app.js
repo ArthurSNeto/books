@@ -472,6 +472,13 @@ async function loadStats() {
             document.getElementById('heroProgressText').textContent = `Pág. ${cr.current_page || 1} / ${cr.total_pages || 1} (${Math.round(cr.progress_percent || 0)}%)`;
             
             document.getElementById('heroResumeBtn').onclick = () => openReader(cr);
+            const dismissBtn = document.getElementById('heroDismissBtn');
+            if (dismissBtn) {
+                dismissBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    await resetBookProgress(cr.id, cr.title);
+                };
+            }
         } else {
             hero.classList.add('hidden');
         }
@@ -597,6 +604,11 @@ function renderBooksGrid(books) {
                 <button class="fav-btn p-2 rounded-xl bg-[#12192e] hover:bg-[#1a2544] ${isFav ? 'text-amber-400' : 'text-slate-400'} hover:text-amber-400 border border-slate-800 transition-colors" title="Favoritar">
                     <i data-lucide="star" class="w-3.5 h-3.5 ${isFav ? 'fill-amber-400' : ''}"></i>
                 </button>
+                ${book.progress_percent > 0 ? `
+                    <button class="reset-read-btn p-2 rounded-xl bg-[#12192e] hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/60 transition-colors" title="Remover de Continuar Lendo">
+                        <i data-lucide="bookmark-x" class="w-3.5 h-3.5"></i>
+                    </button>
+                ` : ''}
             </div>
         `;
 
@@ -604,6 +616,10 @@ function renderBooksGrid(books) {
         card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(book));
         card.querySelector('.move-btn').addEventListener('click', () => openMoveModal(book));
         card.querySelector('.fav-btn').addEventListener('click', () => toggleFav(book.id));
+        const resetBtn = card.querySelector('.reset-read-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => resetBookProgress(book.id, book.title));
+        }
 
         grid.appendChild(card);
     });
@@ -841,4 +857,19 @@ function showToast(message, type = 'success') {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+async function resetBookProgress(bookId, bookTitle = 'Livro') {
+    try {
+        const res = await fetch(`/api/books/${bookId}/reset-progress`, { method: 'POST' });
+        if (res.ok) {
+            showToast(`"${bookTitle}" removido de Continuar Lendo`);
+            await loadStats();
+            await loadBooks();
+        } else {
+            showToast('Erro ao remover livro', 'error');
+        }
+    } catch (e) {
+        showToast('Erro na requisição: ' + e.message, 'error');
+    }
 }

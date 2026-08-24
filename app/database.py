@@ -220,16 +220,20 @@ def get_stats() -> Dict[str, Any]:
     conn = get_db()
     cursor = conn.cursor()
     
+    # Purge any orphaned progress
+    cursor.execute("DELETE FROM reading_progress WHERE book_id NOT IN (SELECT id FROM books)")
+    conn.commit()
+    
     cursor.execute("SELECT COUNT(*) as total_books FROM books")
     total_books = cursor.fetchone()["total_books"]
     
-    cursor.execute("SELECT COUNT(*) as total_reading FROM reading_progress WHERE status = 'reading'")
+    cursor.execute("SELECT COUNT(*) as total_reading FROM reading_progress rp JOIN books b ON rp.book_id = b.id WHERE rp.status = 'reading'")
     total_reading = cursor.fetchone()["total_reading"]
     
-    cursor.execute("SELECT COUNT(*) as total_favorites FROM reading_progress WHERE is_favorite = 1")
+    cursor.execute("SELECT COUNT(*) as total_favorites FROM reading_progress rp JOIN books b ON rp.book_id = b.id WHERE rp.is_favorite = 1")
     total_favorites = cursor.fetchone()["total_favorites"]
     
-    cursor.execute("SELECT COUNT(*) as total_completed FROM reading_progress WHERE status = 'completed'")
+    cursor.execute("SELECT COUNT(*) as total_completed FROM reading_progress rp JOIN books b ON rp.book_id = b.id WHERE rp.status = 'completed'")
     total_completed = cursor.fetchone()["total_completed"]
     
     categories = get_categories_with_counts()
@@ -241,6 +245,7 @@ def get_stats() -> Dict[str, Any]:
         rp.current_page, CASE WHEN rp.total_pages > 1 THEN rp.total_pages ELSE COALESCE(b.page_count, 1) END as total_pages, rp.progress_percent, rp.last_read_at
     FROM reading_progress rp
     JOIN books b ON rp.book_id = b.id
+    WHERE rp.status = 'reading'
     ORDER BY rp.last_read_at DESC
     LIMIT 1
     """)
@@ -417,3 +422,15 @@ def move_book(
     conn.close()
     
     return get_book_by_id(book_id), None
+
+def reset_reading_progress(book_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    UPDATE reading_progress 
+    SET status = 'unread', current_page = 1, progress_percent = 0.0, epub_cfi = NULL
+    WHERE book_id = ?
+    """, (book_id,))
+    conn.commit()
+    conn.close()
+    return get_book_by_id(book_id)
