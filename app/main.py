@@ -191,12 +191,12 @@ def api_sync_library():
     count = scan_and_sync_library()
     return {"status": "success", "total_synced": count}
 
-# Mount static files
-app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
-
 @app.post("/api/books/{book_id}/reset-progress")
 def reset_progress(book_id: int):
     book = reset_reading_progress(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Livro não encontrado")
     return {"success": True, "book": book}
+
+# Mount static files
+app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
