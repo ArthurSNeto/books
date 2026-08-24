@@ -147,4 +147,4 @@ O sistema abrirá automaticamente no navegador em:
 
 ## Licença
 
-Este projeto está sob a licença [MIT](LICENSE).
+Este projeto está sob a licença [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
