@@ -212,7 +212,14 @@ function setupEventListeners() {
     document.getElementById('readerThemeBtn').addEventListener('click', toggleReaderTheme);
     document.getElementById('readerPageInput').addEventListener('change', (e) => {
         const p = parseInt(e.target.value);
-        if (p >= 1 && p <= currentPdfTotalPages) renderPdfPage(p);
+        if (state.activeBook && state.activeBook.format === 'epub') {
+            if (currentEpubBook && currentEpubBook.locations && currentEpubBook.locations.total) {
+                const cfi = currentEpubBook.locations.cfiFromLocation(p - 1);
+                if (cfi) currentRendition.display(cfi);
+            }
+        } else {
+            if (p >= 1 && p <= currentPdfTotalPages) renderPdfPage(p);
+        }
     });
 
     // Keyboard shortcuts

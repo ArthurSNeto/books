@@ -1,6 +1,8 @@
 // ePub.js Integration with in-memory Base64 Payload & IDM Bypass
 let currentEpubBook = null;
 let currentRendition = null;
+let currentEpubTotalPages = 1;
+let currentEpubCurrentPage = 1;
 
 async function openEpubViewer(bookId, startCfi = null) {
     currentBookId = bookId;
@@ -45,11 +47,41 @@ async function openEpubViewer(bookId, startCfi = null) {
         });
         
         currentRendition.themes.register('dark', {
-            'body': { 'background': '#090d1a', 'color': '#e2e8f0', 'font-family': 'system-ui, sans-serif' },
-            'p': { 'line-height': '1.7' },
-            'h1, h2, h3': { 'color': '#c7d2fe' }
+            'body': { 'background': '#090d1a', 'color': '#e2e8f0', 'font-family': 'system-ui, sans-serif', 'padding': '0 20px' },
+            'p': { 'line-height': '1.7', 'margin-bottom': '1em' },
+            'h1, h2, h3, h4': { 'color': '#c7d2fe' }
         });
         currentRendition.themes.select('dark');
+        
+        // Wait for book ready and generate pagination locations
+        currentEpubBook.ready.then(async () => {
+            const spineCount = (currentEpubBook.spine && currentEpubBook.spine.length) ? currentEpubBook.spine.length : 1;
+            currentEpubTotalPages = spineCount;
+            document.getElementById('readerTotalPages').textContent = currentEpubTotalPages;
+            document.getElementById('readerPageInput').max = currentEpubTotalPages;
+            
+            try {
+                // Generate 1024-character standard page segments
+                await currentEpubBook.locations.generate(1024);
+                if (currentEpubBook.locations.total) {
+                    currentEpubTotalPages = currentEpubBook.locations.total;
+                    document.getElementById('readerTotalPages').textContent = currentEpubTotalPages;
+                    document.getElementById('readerPageInput').max = currentEpubTotalPages;
+                    
+                    const loc = currentRendition.currentLocation();
+                    if (loc && loc.start && loc.start.cfi) {
+                        const currPage = currentEpubBook.locations.locationFromCfi(loc.start.cfi) + 1;
+                        if (currPage && currPage > 0) {
+                            currentEpubCurrentPage = currPage;
+                            document.getElementById('readerPageInput').value = currPage;
+                            saveReadingProgress(currentBookId, currPage, currentEpubTotalPages, loc.start.cfi);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('EPUB locations generation notice:', e);
+            }
+        });
         
         if (startCfi) {
             await currentRendition.display(startCfi);
@@ -59,7 +91,23 @@ async function openEpubViewer(bookId, startCfi = null) {
         
         currentRendition.on('relocated', function(location) {
             const cfi = location.start.cfi;
-            saveReadingProgress(currentBookId, 1, 100, cfi);
+            let pageNum = 1;
+            
+            if (currentEpubBook.locations && currentEpubBook.locations.total > 0) {
+                pageNum = currentEpubBook.locations.locationFromCfi(cfi) + 1;
+            } else if (location.start.displayed && location.start.displayed.page > 0) {
+                pageNum = location.start.displayed.page;
+            } else if (location.start.index !== undefined) {
+                pageNum = location.start.index + 1;
+            }
+            
+            currentEpubCurrentPage = Math.max(1, pageNum);
+            const total = currentEpubTotalPages || (currentEpubBook.locations ? currentEpubBook.locations.total : 0) || (currentEpubBook.spine ? currentEpubBook.spine.length : 100);
+            
+            document.getElementById('readerPageInput').value = currentEpubCurrentPage;
+            document.getElementById('readerTotalPages').textContent = total;
+            
+            saveReadingProgress(currentBookId, currentEpubCurrentPage, total, cfi);
         });
         
         loader.classList.add('hidden');
