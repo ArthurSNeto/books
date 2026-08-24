@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>Biblioteca Digital & Leitor Web</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        serif: ['"Cinzel"', 'serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        dark: {
+                            950: '#040711',
+                            900: '#090d16',
+                            850: '#0d1322',
+                            800: '#131b2e',
+                            750: '#1a243d',
+                            700: '#243152',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Local Vendor Scripts (Offline & Fast) -->
+    <script src="/vendor/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
+    </script>
+    <script src="/vendor/jszip.min.js"></script>
+    <script src="/vendor/epub.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-[#060813] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white">
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app" class="flex flex-col flex-1 h-screen overflow-hidden">
+        
+        <!-- TOP NAVBAR -->
+        <header class="app-header flex items-center justify-between px-6 py-3.5 border-b border-slate-800/80 bg-[#090d1a]/90 backdrop-blur-md z-30 shrink-0">
+            <div class="flex items-center gap-3.5">
+                <div class="logo-icon flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-indigo-400 shadow-lg shadow-purple-950/60 text-white border border-purple-400/20">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold tracking-tight font-serif text-white flex items-center gap-2">
+                        Biblioteca Digital
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-700/50">PRO</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400 font-medium">Acervo & Leitor Web Integrado</p>
+                </div>
+            </div>
+
+            <!-- SEARCH BAR -->
+            <div class="search-container flex-1 max-w-xl mx-8 relative">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Pesquise por título, autor, ano ou categoria..." 
+                    class="w-full bg-[#0d1326] border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all shadow-inner"
+                >
+                <button id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- QUICK ACTIONS & STATS -->
+            <div class="flex items-center gap-3">
+                <div class="stats-badge flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0d1326] border border-slate-800/80 text-xs text-slate-300">
+                    <i data-lucide="library" class="w-4 h-4 text-purple-400"></i>
+                    <span id="totalBooksCount" class="font-mono font-semibold">Carregando...</span>
+                </div>
+                <button id="settingsBtn" title="Configurações / Alterar Pasta de Livros" class="p-2 rounded-xl bg-[#0d1326] border border-slate-800 text-slate-400 hover:text-purple-400 hover:border-purple-700 transition-all"><i data-lucide="settings" class="w-4 h-4"></i></button>
+                <button id="resyncBtn" title="Sincronizar Arquivos do Disco" class="p-2 rounded-xl bg-[#0d1326] border border-slate-800 text-slate-400 hover:text-purple-400 hover:border-purple-700 transition-all">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- APP BODY (SIDEBAR + MAIN CONTENT) -->
+        <div class="flex flex-1 overflow-hidden relative">
+            
+            <!-- SIDEBAR -->
+            <aside class="sidebar w-80 bg-[#080c18] border-r border-slate-800/80 flex flex-col shrink-0 overflow-y-auto custom-scrollbar p-4 gap-5">
+                
+                <!-- NAVIGATION SHORTCUTS -->
+                <div class="flex flex-col gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-1">Navegação</span>
+                    <button class="nav-btn active flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-[#121a30] hover:text-white transition-all border border-transparent" data-filter="all">
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="compass" class="w-4 h-4 text-purple-400"></i>
+                            <span>Todos os Livros</span>
+                        </div>
+                        <span class="badge" id="navAllCount">-</span>
+                    </button>
+                    <button class="nav-btn flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-[#121a30] hover:text-white transition-all border border-transparent" data-filter="reading">
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="bookmark" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Lendo Atualmente</span>
+                        </div>
+                        <span class="badge" id="navReadingCount">0</span>
+                    </button>
+                    <button class="nav-btn flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-[#121a30] hover:text-white transition-all border border-transparent" data-filter="favorites">
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="star" class="w-4 h-4 text-amber-400"></i>
+                            <span>Favoritos</span>
+                        </div>
+                        <span class="badge" id="navFavCount">0</span>
+                    </button>
+                    <button class="nav-btn flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-[#121a30] hover:text-white transition-all border border-transparent" data-filter="completed">
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-blue-400"></i>
+                            <span>Concluídos</span>
+                        </div>
+                        <span class="badge" id="navCompletedCount">0</span>
+                    </button>
+                </div>
+
+                <!-- CATEGORIES ACCORDION -->
+                <div class="flex flex-col gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-1">Categorias</span>
+                    <div id="categoriesList" class="flex flex-col gap-1">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- LANGUAGES & FORMATS FILTER -->
+                <div class="flex flex-col gap-3 pt-4 border-t border-slate-800/80">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3">Filtros</span>
+                    
+                    <div class="px-3 flex flex-col gap-1.5">
+                        <label class="text-[11px] font-semibold text-slate-400">Idioma:</label>
+                        <select id="languageSelect" class="w-full bg-[#0d1326] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                            <option value="all">Todos os Idiomas</option>
+                            <option value="Portugues">Português</option>
+                            <option value="Ingles">Inglês</option>
+                            <option value="Espanhol">Espanhol</option>
+                            <option value="Italiano">Italiano</option>
+                            <option value="Alemao">Alemão</option>
+                            <option value="Frances">Francês</option>
+                            <option value="Japones">Japonês</option>
+                            <option value="Latim">Latim</option>
+                        </select>
+                    </div>
+
+                    <div class="px-3 flex flex-col gap-1.5">
+                        <label class="text-[11px] font-semibold text-slate-400">Formato:</label>
+                        <div class="flex gap-2">
+                            <button class="format-btn active flex-1 py-1.5 px-2 rounded-xl text-xs font-mono bg-[#0d1326] border border-slate-800 text-slate-300 hover:border-purple-600 transition-colors" data-format="all">Todos</button>
+                            <button class="format-btn flex-1 py-1.5 px-2 rounded-xl text-xs font-mono bg-[#0d1326] border border-slate-800 text-slate-300 hover:border-purple-600 transition-colors" data-format="pdf">PDF</button>
+                            <button class="format-btn flex-1 py-1.5 px-2 rounded-xl text-xs font-mono bg-[#0d1326] border border-slate-800 text-slate-300 hover:border-purple-600 transition-colors" data-format="epub">EPUB</button>
+                        </div>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- MAIN CONTENT AREA -->
+            <main class="flex-1 flex flex-col overflow-y-auto custom-scrollbar p-6 gap-6 bg-gradient-to-b from-[#060813] via-[#090e1f]/40 to-[#060813]">
+                
+                <!-- HERO: CONTINUE READING -->
+                <div id="continueReadingHero" class="hidden">
+                    <div class="hero-card relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950/70 via-[#10152b] to-indigo-950/60 border border-purple-800/40 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl backdrop-blur-md">
+                        <div class="flex items-center gap-5">
+                            <div class="hero-book-cover flex items-center justify-center w-16 h-22 rounded-xl bg-gradient-to-br from-purple-900 to-indigo-950 border border-purple-600/40 text-purple-300 shadow-xl shrink-0">
+                                <i data-lucide="book-marked" class="w-8 h-8"></i>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-400 border border-emerald-700/60 flex items-center gap-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        Continuar Lendo
+                                    </span>
+                                    <span id="heroCategory" class="text-xs font-semibold text-purple-300">Categoria</span>
+                                </div>
+                                <h2 id="heroTitle" class="text-base md:text-lg font-bold text-white tracking-tight line-clamp-1">Título do Livro</h2>
+                                <p id="heroAuthor" class="text-xs text-slate-400 font-medium">Autor do Livro</p>
+                                
+                                <div class="flex items-center gap-3 mt-2">
+                                    <div class="w-48 h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-700/80">
+                                        <div id="heroProgressBar" class="h-full bg-gradient-to-r from-purple-500 to-emerald-400 rounded-full transition-all" style="width: 0%"></div>
+                                    </div>
+                                    <span id="heroProgressText" class="text-xs font-mono text-slate-300">Pág. 1 / 100 (0%)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="heroResumeBtn" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-950/60 transition-all shrink-0 hover:scale-105 active:scale-95">
+                            <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                            <span>Retomar Leitura</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CONTROLS & BREADCRUMB BAR -->
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-2 text-sm text-slate-400">
+                        <span id="currentSectionTitle" class="text-lg font-bold text-white font-serif tracking-tight">Todos os Livros</span>
+                        <span class="text-slate-700">•</span>
+                        <span id="sectionResultsCount" class="text-xs text-slate-400 font-medium">Mostrando 0 livros</span>
+                    </div>
+
+                    <!-- SORT CONTROLS -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-semibold text-slate-400">Ordenar por:</label>
+                        <select id="sortBySelect" class="bg-[#0d1326] border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-medium">
+                            <option value="title_asc">Título (A-Z)</option>
+                            <option value="title_desc">Título (Z-A)</option>
+                            <option value="author_asc">Autor (A-Z)</option>
+                            <option value="year_desc">Ano (Mais recente)</option>
+                            <option value="year_asc">Ano (Mais antigo)</option>
+                            <option value="last_read_desc">Última Leitura</option>
+                            <option value="progress_desc">Maior Progresso</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- BOOKS CONTAINER (GRID / LIST) -->
+                <div id="booksGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 pb-8">
+                    <!-- Books loaded dynamically -->
+                </div>
+
+                <!-- EMPTY STATE -->
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-[#0d1326] border border-slate-800 flex items-center justify-center text-slate-500 mb-4">
+                        <i data-lucide="search-x" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-200 mb-1">Nenhum livro encontrado</h3>
+                    <p class="text-xs text-slate-400 max-w-sm">Tente ajustar seus termos de pesquisa ou remover os filtros aplicados.</p>
+                </div>
+
+                <!-- PAGINATION BAR -->
+                <div id="paginationBar" class="flex items-center justify-between py-4 border-t border-slate-800/60 mt-auto">
+                    <span id="paginationInfo" class="text-xs font-mono text-slate-400">Página 1 de 1</span>
+                    <div class="flex items-center gap-2" id="paginationControls">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ==================== READER FULLSCREEN SCREEN ==================== -->
+    <div id="readerModal" class="fixed inset-0 z-50 bg-[#060813] flex flex-col hidden">
+        
+        <!-- READER HEADER -->
+        <header class="reader-header flex items-center justify-between px-5 py-3 bg-[#090d1a] border-b border-slate-800 text-slate-200 select-none shrink-0 shadow-lg">
+            
+            <div class="flex items-center gap-3.5">
+                <button id="closeReaderBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-purple-950 text-slate-200 hover:text-purple-300 border border-slate-700/80 text-xs font-semibold transition-all">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Biblioteca</span>
+                </button>
+                <div class="flex flex-col">
+                    <h2 id="readerBookTitle" class="text-xs md:text-sm font-bold text-white line-clamp-1 max-w-md">Título do Livro</h2>
+                    <span id="readerBookAuthor" class="text-[11px] text-slate-400">Autor</span>
+                </div>
+            </div>
+
+            <!-- PAGE & NAVIGATION CONTROLS -->
+            <div class="flex items-center gap-2">
+                <button id="prevPageBtn" title="Página Anterior (Seta Esquerda)" class="p-2 rounded-xl bg-[#0d1326] hover:bg-purple-950 text-slate-300 hover:text-purple-300 border border-slate-800 transition-all disabled:opacity-30">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                
+                <div class="flex items-center gap-1 text-xs font-mono bg-[#0d1326] px-3 py-1.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400">Pág.</span>
+                    <input type="number" id="readerPageInput" min="1" value="1" class="w-12 bg-slate-900 border border-slate-700 text-center rounded-lg text-slate-100 font-mono text-xs py-0.5 focus:outline-none focus:border-purple-500">
+                    <span class="text-slate-500">/</span>
+                    <span id="readerTotalPages" class="text-slate-300">1</span>
+                </div>
+
+                <button id="nextPageBtn" title="Próxima Página (Seta Direita)" class="p-2 rounded-xl bg-[#0d1326] hover:bg-purple-950 text-slate-300 hover:text-purple-300 border border-slate-800 transition-all disabled:opacity-30">
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- VIEW, ZOOM & THEME CONTROLS -->
+            <div class="flex items-center gap-2">
+                <!-- Zoom Controls -->
+                <div class="flex items-center bg-[#0d1326] rounded-xl p-0.5 border border-slate-800">
+                    <button id="zoomOutBtn" title="Diminuir Zoom (-)" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                        <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <span id="zoomLevelText" class="px-2 text-xs font-mono text-slate-300">120%</span>
+                    <button id="zoomInBtn" title="Aumentar Zoom (+)" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                        <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="readerThemeBtn" title="Inverter Cores (Modo Escuro / Modo Claro)" class="p-2 rounded-xl bg-[#0d1326] hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all">
+                    <i data-lucide="moon" id="themeIcon" class="w-4 h-4 text-purple-400"></i>
+                </button>
+
+                <!-- Fullscreen Toggle -->
+                <button id="fullscreenBtn" title="Tela Cheia (F)" class="p-2 rounded-xl bg-[#0d1326] hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all">
+                    <i data-lucide="maximize" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+        </header>
+
+        <!-- READER BODY (CANVAS CONTAINER / EPUB IFRAME) -->
+        <div id="readerViewport" class="flex-1 overflow-auto bg-[#04060d] flex items-center justify-center relative select-none custom-scrollbar p-4">
+            
+            <!-- PDF Canvas Container -->
+            <div id="pdfContainer" class="pdf-dark-mode relative shadow-2xl flex flex-col items-center my-auto">
+                <canvas id="pdfCanvas" class="rounded-xl shadow-2xl border border-slate-800"></canvas>
+            </div>
+
+            <!-- EPUB Container -->
+            <div id="epubContainer" class="w-full h-full max-w-4xl mx-auto p-4 hidden">
+                <div id="epubViewer" class="w-full h-full rounded-2xl bg-[#090d1a] p-6 border border-slate-800 shadow-2xl"></div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="readerLoader" class="absolute inset-0 bg-[#04060d]/90 flex flex-col items-center justify-center gap-3 z-20">
+                <div class="w-10 h-10 border-3 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+                <span class="text-xs text-slate-300 font-mono font-medium">Carregando livro...</span>
+            </div>
+
+        </div>
+
+    </div>
+
+        <!-- ==================== SETTINGS / DIRECTORY MODAL ==================== -->
+    <div id="settingsModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="modal-card w-full max-w-lg bg-[#0d1326] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#090d1a]">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-xl bg-purple-950 text-purple-400 border border-purple-800/50">
+                        <i data-lucide="folder-cog" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white font-serif">Diretório da Biblioteca</h3>
+                        <p class="text-[11px] text-slate-400">Pasta local ou Google Drive Desktop</p>
+                    </div>
+                </div>
+                <button id="closeSettingsModalBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="settingsForm" class="p-6 flex flex-col gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                        <span>Caminho da Pasta dos Livros:</span>
+                        <span id="pathValidationBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">Verificando...</span>
+                    </label>
+                    <input type="text" id="libraryPathInput" required placeholder="Ex: G:\Meu Drive\Books ou D:\IA\projects\books\Books" class="w-full bg-[#070a14] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono">
+                    <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                        📁 Estrutura recomendada: <code class="text-purple-300 font-mono bg-purple-950/60 px-1.5 py-0.5 rounded">Pasta_Raiz/Categoria/Idioma/livro.pdf</code>
+                    </p>
+                </div>
+
+                <div id="settingsStatusMsg" class="hidden text-xs p-3 rounded-xl border"></div>
+
+                <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-800/80">
+                    <button type="button" id="cancelSettingsBtn" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition-colors">Cancelar</button>
+                    <button type="submit" id="saveSettingsBtn" class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-950 transition-all">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span id="saveSettingsBtnText">Salvar & Sincronizar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== EDIT METADATA MODAL ==================== -->
+    <div id="editModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="modal-card w-full max-w-lg bg-[#0d1326] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#090d1a]">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-xl bg-purple-950 text-purple-400 border border-purple-800/50">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-white">Editar Título e Metadados</h3>
+                </div>
+                <button id="closeEditModalBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="editForm" class="p-6 flex flex-col gap-4">
+                <input type="hidden" id="editBookId">
+                
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold text-slate-300">Título do Livro:</label>
+                    <input type="text" id="editTitleInput" required class="w-full bg-[#070a14] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2 flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-slate-300">Autor:</label>
+                        <input type="text" id="editAuthorInput" required class="w-full bg-[#070a14] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-slate-300">Ano:</label>
+                        <input type="text" id="editYearInput" placeholder="Ex: 1988" class="w-full bg-[#070a14] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-purple-500 font-mono">
+                    </div>
+                </div>
+
+                <!-- FILENAME PREVIEW -->
+                <div class="p-3.5 rounded-xl bg-[#070a14] border border-slate-800 flex flex-col gap-1">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Novo Nome no Disco:</span>
+                    <p id="editFilenamePreview" class="text-xs font-mono text-purple-300 break-all">(1988) Titulo - Autor.pdf</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" id="cancelEditBtn" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-950 transition-all">Salvar e Renomear</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+        <!-- ==================== MOVE CATEGORY MODAL ==================== -->
+    <div id="moveModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="modal-card w-full max-w-lg bg-[#0d1326] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#090d1a]">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-xl bg-indigo-950 text-indigo-400 border border-indigo-800/50">
+                        <i data-lucide="folder-input" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-white font-serif">Mover Livro de Categoria</h3>
+                </div>
+                <button id="closeMoveModalBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="moveForm" class="p-6 flex flex-col gap-4">
+                <input type="hidden" id="moveBookId">
+                
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                        <span>Nova Categoria:</span>
+                        <button type="button" id="toggleNewCategoryBtn" class="text-[10px] text-purple-400 hover:text-purple-300 font-medium">+ Criar Nova</button>
+                    </label>
+                    <select id="moveCategorySelect" class="w-full bg-[#070a14] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </select>
+                    <input type="text" id="newCategoryInput" placeholder="Digite o nome da nova categoria..." class="hidden w-full bg-[#070a14] border border-purple-600 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none font-medium">
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                        <span>Novo Idioma:</span>
+                        <button type="button" id="toggleNewLanguageBtn" class="text-[10px] text-purple-400 hover:text-purple-300 font-medium">+ Criar Novo</button>
+                    </label>
+                    <select id="moveLanguageSelect" class="w-full bg-[#070a14] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </select>
+                    <input type="text" id="newLanguageInput" placeholder="Digite o nome do novo idioma..." class="hidden w-full bg-[#070a14] border border-purple-600 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none font-medium">
+                </div>
+
+                <!-- PATH PREVIEW -->
+                <div class="p-3.5 rounded-xl bg-[#070a14] border border-slate-800 flex flex-col gap-1">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Novo Caminho Físico:</span>
+                    <p id="movePathPreview" class="text-xs font-mono text-indigo-300 break-all">Books/Categoria/Idioma/arquivo.pdf</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" id="cancelMoveBtn" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-950 transition-all">Mover Arquivo</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- SCRIPTS -->
+    <script src="/js/pdf-viewer.js?v=5"></script>
+    <script src="/js/epub-viewer.js?v=5"></script>
+    <script src="/js/app.js?v=11"></script>
+</body>
+</html>
