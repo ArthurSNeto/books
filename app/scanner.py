@@ -9,27 +9,42 @@ from app.database import get_db, init_db
 def parse_book_filename(filename: str) -> Tuple[str, str, str]:
     stem = Path(filename).stem
     
-    match = re.match(r'^\((\d{4}|XXXX)\)\s*(.*?)\s*-\s*(.*)$', stem)
-    if match:
-        year = match.group(1)
-        raw_title = match.group(2).replace('_', ' ').strip()
-        raw_author = match.group(3).replace('_', ' ').strip()
-        return raw_title, raw_author, year
+    # Strip (YEAR) or (XXXX) prefix
+    year = "XXXX"
+    m_year = re.match(r'^\((\d{4}|XXXX)\)\s*(.*)$', stem)
+    if m_year:
+        year = m_year.group(1)
+        stem = m_year.group(2).strip()
         
-    match2 = re.match(r'^\((\d{4}|XXXX)\)\s*(.*)$', stem)
-    if match2:
-        year = match2.group(1)
-        raw_title = match2.group(2).replace('_', ' ').strip()
-        return raw_title, "Autor Desconhecido", year
-        
+    # Check if there is author separator ' - '
     if ' - ' in stem:
         parts = stem.split(' - ', 1)
-        raw_title = parts[0].replace('_', ' ').strip()
-        raw_author = parts[1].replace('_', ' ').strip()
-        return raw_title, raw_author, "XXXX"
+        raw_title = parts[0].strip()
+        raw_author = parts[1].strip()
+    else:
+        raw_title = stem.strip()
+        raw_author = "Autor Desconhecido"
         
-    raw_title = stem.replace('_', ' ').strip()
-    return raw_title, "Autor Desconhecido", "XXXX"
+    # Strip numeric doc-id from start of title if present (e.g. "19279775-advanced-kuji-in" -> "advanced-kuji-in")
+    raw_title = re.sub(r'^\d{5,}[-_ ]+', '', raw_title)
+    
+    # Clean underscores and hyphens in raw title if it looks like a slug
+    if '_' in raw_title:
+        raw_title = raw_title.replace('_', ' ')
+    elif '-' in raw_title and not re.search(r'\b[A-Za-z]+-[A-Za-z]+\b', raw_title):
+        raw_title = raw_title.replace('-', ' ')
+        
+    if '_' in raw_author:
+        raw_author = raw_author.replace('_', ' ')
+        
+    # Clean whitespace and redundant author/format suffixes
+    raw_title = re.sub(r'\s*-\s*Autor[_ ]Desconhecido$', '', raw_title, flags=re.IGNORECASE).strip()
+    raw_title = re.sub(r'-pdf$', '', raw_title, flags=re.IGNORECASE).strip()
+    raw_author = raw_author.strip()
+    if not raw_author or raw_author.lower() in ('autor desconhecido', 'autor_desconhecido', 'unknown'):
+        raw_author = "Autor Desconhecido"
+        
+    return raw_title, raw_author, year
 
 def scan_and_sync_library() -> int:
     init_db()

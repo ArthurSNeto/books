@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from app.config import get_library_dir
 
-DB_PATH = Path(r"d:\IA\projects\books\library.db")
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "library.db"
 
 def get_db():
     conn = sqlite3.connect(str(DB_PATH))

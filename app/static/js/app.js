@@ -5,14 +5,19 @@ function getCategoryIcon(catName) {
     if (!catName) return 'book-open';
     const lower = catName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     
+    if (lower.includes('business') || lower.includes('financ') || lower.includes('dinheiro') || lower.includes('invest') || lower.includes('negocio') || lower.includes('econom')) return 'trending-up';
+    if (lower.includes('health') || lower.includes('diet') || lower.includes('nutri') || lower.includes('saude') || lower.includes('well') || lower.includes('fitness')) return 'heart-pulse';
+    if (lower.includes('relationship') || lower.includes('relacion') || lower.includes('comunic') || lower.includes('famil') || lower.includes('casam')) return 'users';
     if (lower.includes('occult') || lower.includes('ocult') || lower.includes('hermet') || lower.includes('esoter') || lower.includes('magia') || lower.includes('magic') || lower.includes('alquimi') || lower.includes('thelema')) return 'flame';
     if (lower.includes('witch') || lower.includes('brux') || lower.includes('pagan') || lower.includes('wicca') || lower.includes('luna') || lower.includes('moon')) return 'moon';
     if (lower.includes('afro') || lower.includes('umbanda') || lower.includes('candomble') || lower.includes('orixa') || lower.includes('hoodoo') || lower.includes('voodoo') || lower.includes('ifa')) return 'feather';
     if (lower.includes('divin') || lower.includes('taro') || lower.includes('tarot') || lower.includes('oracul') || lower.includes('runa') || lower.includes('astrol') || lower.includes('quirom')) return 'eye';
-    if (lower.includes('spirit') || lower.includes('espirit') || lower.includes('relig') || lower.includes('buda') || lower.includes('budis') || lower.includes('yoga') || lower.includes('xama') || lower.includes('crist')) return 'sparkles';
+    if (lower.includes('spiritism') || lower.includes('medium') || lower.includes('kardec') || lower.includes('psicograf')) return 'sparkles';
+    if (lower.includes('eastern') || lower.includes('buddh') || lower.includes('orient') || lower.includes('zen') || lower.includes('tao') || lower.includes('hindu')) return 'sun';
+    if (lower.includes('spirit') || lower.includes('espirit') || lower.includes('relig') || lower.includes('yoga') || lower.includes('xama') || lower.includes('crist')) return 'sparkles';
     if (lower.includes('psych') || lower.includes('psic') || lower.includes('autoajuda') || lower.includes('mente') || lower.includes('mind') || lower.includes('coach') || lower.includes('habito')) return 'brain';
     if (lower.includes('philos') || lower.includes('filo') || lower.includes('hist') || lower.includes('mito') || lower.includes('civil') || lower.includes('grego') || lower.includes('romano')) return 'landmark';
-    if (lower.includes('herb') || lower.includes('plant') || lower.includes('flor') || lower.includes('natur') || lower.includes('cura') || lower.includes('saude') || lower.includes('medic') || lower.includes('fitoter')) return 'flower-2';
+    if (lower.includes('herb') || lower.includes('plant') || lower.includes('flor') || lower.includes('natur') || lower.includes('cura') || lower.includes('medic') || lower.includes('fitoter')) return 'flower-2';
     if (lower.includes('ufo') || lower.includes('ovni') || lower.includes('alien') || lower.includes('consp') || lower.includes('extrater') || lower.includes('secreto')) return 'shield-alert';
     if (lower.includes('rare') || lower.includes('raro') || lower.includes('ban') || lower.includes('grimo') || lower.includes('proib') || lower.includes('demon') || lower.includes('manusc')) return 'skull';
     if (lower.includes('fic') || lower.includes('fant') || lower.includes('romance') || lower.includes('novel') || lower.includes('conto') || lower.includes('lit') || lower.includes('juvenil')) return 'swords';

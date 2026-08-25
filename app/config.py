@@ -3,8 +3,9 @@ import os
 from pathlib import Path
 from typing import Optional
 
-CONFIG_FILE = Path(r"d:\IA\projects\books\config.json")
-DEFAULT_BOOKS_DIR = Path(r"d:\IA\projects\books\Books")
+BASE_DIR = Path(__file__).resolve().parent.parent
+CONFIG_FILE = BASE_DIR / "config.json"
+DEFAULT_BOOKS_DIR = BASE_DIR / "Books"
 
 def get_config() -> dict:
     if CONFIG_FILE.exists():
