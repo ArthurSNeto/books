@@ -8,6 +8,7 @@ function getCategoryIcon(catName) {
     if (lower.includes('business') || lower.includes('financ') || lower.includes('dinheiro') || lower.includes('invest') || lower.includes('negocio') || lower.includes('econom')) return 'trending-up';
     if (lower.includes('health') || lower.includes('diet') || lower.includes('nutri') || lower.includes('saude') || lower.includes('well') || lower.includes('fitness')) return 'heart-pulse';
     if (lower.includes('relationship') || lower.includes('relacion') || lower.includes('comunic') || lower.includes('famil') || lower.includes('casam')) return 'users';
+    if (lower.includes('survival') || lower.includes('sobreviv') || lower.includes('bushcraft') || lower.includes('outdoor') || lower.includes('camp')) return 'compass';
     if (lower.includes('occult') || lower.includes('ocult') || lower.includes('hermet') || lower.includes('esoter') || lower.includes('magia') || lower.includes('magic') || lower.includes('alquimi') || lower.includes('thelema')) return 'flame';
     if (lower.includes('witch') || lower.includes('brux') || lower.includes('pagan') || lower.includes('wicca') || lower.includes('luna') || lower.includes('moon')) return 'moon';
     if (lower.includes('afro') || lower.includes('umbanda') || lower.includes('candomble') || lower.includes('orixa') || lower.includes('hoodoo') || lower.includes('voodoo') || lower.includes('ifa')) return 'feather';
